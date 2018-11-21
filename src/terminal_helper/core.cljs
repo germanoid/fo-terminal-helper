@@ -14,6 +14,8 @@
 
 (def mode (atom "text"))
 
+(def last-lenght (atom 0))
+
 (def first-time (atom true))
 
 (defn write-text [element text]
@@ -22,6 +24,17 @@
       (.-innerHTML)
       (set! text)))
 
+; Return clean filter-string. trim and strip.
+(defn get-filter-string []
+  (clojure.string/split
+   (strip (clojure.string/trim
+           @filter-string) ",;")
+   #"\s+"))
+
+; Take 2 words (string, case insensitive)
+; Return Likeness (int)
+
+
 (defn get-likeness-between  [first second]
   (count (filter (fn [x] (= 1 x))
                  (map #(count (distinct
@@ -29,9 +42,20 @@
                       (clojure.string/upper-case first)
                       (clojure.string/upper-case second)))))
 
+; Take Number of desired word lenght
+; Return List of Words with x length from a sorted group by count @allwords atom.
 (defn get-worts-with-lenght-of [number]
-  (last (first (drop (- number 1) @allwords))))
+  (do (reset! last-lenght number)
+      (sort (last (first (drop (- number 1) @allwords))))))
 
+; Take a list of words and a filter list.
+; - filter-string has syntax "word likeness word likeness"
+; - example "TEST 3 TEXT 2" usw
+; need to be transformed into [[TEST 3][TEXT 2]]
+; (partition 2 (clojure.string/split @filter-string #"\s+"))
+; maybe move it in here?
+; - note: incomplete filter-list possible, but tail gets ignored.
+;         possible problem: likeness over 10, because the incomplete 1 is valid.
 (defn filter-words-by [word-list filter-list]
   (if (empty? filter-list)
     word-list
@@ -42,42 +66,62 @@
       (recur (filter #(= (get-likeness-between % w) l)
                      word-list) r))))
 
+; simple stip function
+; Takes input string and string with chars, which should be removed.
+; Return the input string without any chars from the second string.
 (defn strip [coll chars]
   (apply str (remove #((set chars) %) coll)))
 
-(defn get-text-box []
-  (-> js/document
-      (.getElementById "input-field")
-      (.-value)))
-
+; This function is a good example of a bad Clojure flow.
+; It depends on the atoms to work and has no input arguments.
+; I might revisit it later and give it some arguments.
+; it takes (depending on the first time boolean atom)
+; all words of the length of the first, or the current words
+; and put it to the filter-words-by function.
+; Return the filtered list
+; (I'm impressed that it don't write it into the current-words atom..)
 (defn get-updated-list []
-  (let [input (partition 2 (clojure.string/split
-                            (strip (clojure.string/trim
-                                    @filter-string) ",;")
-                            #"\s+"))
+  (let [input (partition 2 get-filter-string)
         lenght (count (first (first input)))
         world-list (if @first-time
                      (get-worts-with-lenght-of lenght)
                      @current-words)]
     (filter-words-by world-list input)))
 
+; does too much.
+; autocompletion-list under the input field and userfeedback
+; no arguments, no return value, only side effects…
 (defn update-usertext []
-  (let [word-list (if @first-time
-                    (apply concat (vals @allwords))
-                    @current-words)
-        words-left (filter #(clojure.string/starts-with? % @usertext) word-list)]
-    (if (= (count words-left) 0)
-      (do
-        (write-text "return-info" (str "No word match for " @usertext))
-        (swap! usertext #(clojure.string/join "" (drop-last %1))))
-      (do (write-text "usertext" @usertext)
-          (write-text "auto-complete"
-                      (if (= (count @usertext) 0)
-                        ""
-                        (if (< (count words-left) 100)
-                          words-left
-                          "more than 100 left")))))))
+  (let [word-list
+        (if @first-time
+          (apply concat (vals @allwords))
+          @current-words)
+        all-word-list
+        (if @first-time
+          (apply concat (vals @allwords))
+          (get-worts-with-lenght-of @last-lenght))
+        words-left (filter #(clojure.string/starts-with? % @usertext) word-list)
+        all-words-left (filter #(clojure.string/starts-with? % @usertext)
+                               (clojure.set/difference (set all-word-list)
+                                                       (set get-filter-string)))
+        count-words-left (count words-left)
+        count-all-words-left (count all-words-left)]
+    (do (write-text "usertext" @usertext)
+        (write-text "auto-complete"
+                    (cond
+                      (= (count @usertext) 0) ""
+                      (and (= count-words-left 0) (> count-all-words-left 0))
+                      "NO CHANCE WITH THIS WORD. But you can go ahad to refine your list."
+                      (= count-all-words-left 0)
+                      (do (swap! usertext #(clojure.string/join "" (drop-last %1)))
+                          (write-text "usertext" @usertext)
+                          "NO VALID WORD.")
+                      (<= count-words-left 100) words-left
+                      (> count-words-left 100) "more than 100 left")))))
 
+; The manual autocompletion function. It doesn't fuck up like the Microsoft terminal.
+; but again. relay on atoms, no input, no return.
+; did I mentioned I used to be a c# programmer?
 (defn auto-complete []
   (let [word-list (if @first-time
                     (apply concat (vals @allwords))
@@ -93,10 +137,12 @@
           (write-text "usertext" @usertext)
           (if (not-any? #(= @usertext %) @current-words) (auto-complete))))))
 
+; let you only send valid words in the list. even without a chance to succses
+; relay on atoms, no arguments, no return...
 (defn send-input-text []
   (let [word-list (if @first-time
                     (apply concat (vals @allwords))
-                    @current-words)]
+                    (get-worts-with-lenght-of @last-lenght))]
     (if (some #(= @usertext %) word-list)
       (do
         (swap! filter-string #(str %1 %2) @usertext)
@@ -107,6 +153,7 @@
         (write-text "current-list" @filter-string))
       (write-text "return-info" (str "No word match for " @usertext)))))
 
+; same function but for the likeness number.
 (defn send-input-number []
   (if (not (= @usertext ""))
     (do
@@ -121,6 +168,7 @@
       (write-text "current-list" @filter-string))
     (write-text "return-info" "Likeness empty.")))
 
+; the reset switch function. maybe I give it a button at some time?
 (defn reset-all []
   (do (reset! usertext "")
       (reset! current-words [])
@@ -134,31 +182,44 @@
       (write-text "return-info" "Reset successful")
       (write-text "current-list" @filter-string)))
 
+; function to parse user input.
 (defn parse-userkey [e]
   (if (= @mode "text")
     (let [kc (.-keyCode e)]
       (cond
+        ; delete last char with tab
         (= kc 8) (swap! usertext #(clojure.string/join "" (drop-last %1)))
+        ; autocompletion with tab
         (= kc 9) (do (.preventDefault e)
                      (auto-complete))
+        ; try sending input with return
         (= kc 13) (send-input-text)
+        ; ECS to reset all
         (= kc 27) (reset-all)
+        ; let user type words.
+        ; TODO: fix a possible problem with other languages. äüößÅÆØиыэюя usw.
         (and (>= kc 65) (<= kc 90)) (swap! usertext #(str %1 %2) (clojure.string/upper-case (.-key e))))
       (update-usertext))
     (let [kc (.-keyCode e)]
       (cond
+        ; delete last char with tab
         (= kc 8) (swap! usertext #(clojure.string/join "" (drop-last %1)))
+        ; try sending input with return
         (= kc 13) (send-input-number)
+        ; esc to reset all
         (= kc 27) (reset-all)
+        ; let user type numbers
         (and (>= kc 48) (<= kc 57)) (swap! usertext #(str %1 %2) (.-key e)))
       (write-text "usertext" @usertext))))
 
+; listener on key-down events -> call parse-userkey
 (dommy/listen! js/document :keydown (fn [e] (do (js/console.log e)
                                                 (write-text "return-info" "")
                                                 (parse-userkey e))))
 
-;;(filter-words-by (get-worts-with-lenght-of lenght) input)
+
 ;; define your app data so that it doesn't get over-written on reload
+
 
 (defonce app-state (atom {:text "Hello world!"}))
 
