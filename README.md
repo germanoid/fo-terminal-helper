@@ -18,13 +18,15 @@ https://germanoid.github.io/terminal-helper/
 ---
 Please note:
 
-* You can only choose words with a chance to succeed. If you can't type a word, it's not the right one.
+* You can now choose words with a chance to succeed. But without autocompletion, I don't want them to appear on accident. 
 * The Programm doesn't restart automatically. If you found the word, just press ESC for a full reset.
 * Tab = Autocomplete
 * Enter = Send input
 * Backspace = Delete last character
 
 ## Setup
+
+You need to have [Leiningen](https://leiningen.org/)
 
 To get an interactive development environment run:
 
