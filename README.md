@@ -1,10 +1,28 @@
-# terminal-helper
+# Fallout Terminal Helper
 
-FIXME: Write a one-line description of your library/project.
+Helper for Fallout Terminal Hacking Mini-Game.
 
 ## Overview
 
-FIXME: Write a paragraph about the library/project and highlight its goals.
+This Web-App can filter Passwords with the Likeness number. 
+
+Steam Overlay Browser or a second PC might be an efficient method to use it. 
+
+Javascript has to be enabled.
+
+---
+Since its complete client site, you can access it with GitHub pages: 
+
+https://germanoid.github.io/terminal-helper/
+
+---
+Please note:
+
+* You can only choose words with a chance to succeed. If you can't type a word, it's not the right one.
+* The Programm doesn't restart automatically. If you found the word, just press ESC for a full reset.
+* Tab = Autocomplete
+* Enter = Send input
+* Backspace = Delete last character
 
 ## Setup
 
@@ -32,8 +50,3 @@ To create a production build run:
 And open your browser in `resources/public/index.html`. You will not
 get live reloading, nor a REPL. 
 
-## License
-
-Copyright © 2014 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at your option) any later version.
