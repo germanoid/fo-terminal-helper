@@ -1,5 +1,7 @@
 (ns terminal-helper.core
-  (:require [dommy.core :as dommy :refer-macros [sel1]]))
+  (:require [dommy.core :as dommy :refer-macros [sel1]]
+            [clojure.set :as set]
+            [clojure.string :as str]))
 
 (enable-console-print!)
 
@@ -24,23 +26,27 @@
       (.-innerHTML)
       (set! text)))
 
+; simple stip function
+; Takes input string and string with chars, which should be removed.
+; Return the input string without any chars from the second string.
+(defn strip [coll chars]
+  (apply str (remove #((set chars) %) coll)))
+
 ; Return clean filter-string. trim and strip.
 (defn get-filter-string []
-  (clojure.string/split
-   (strip (clojure.string/trim
+  (str/split
+   (strip (str/trim
            @filter-string) ",;")
    #"\s+"))
 
 ; Take 2 words (string, case insensitive)
 ; Return Likeness (int)
-
-
 (defn get-likeness-between  [first second]
   (count (filter (fn [x] (= 1 x))
                  (map #(count (distinct
                                (vector % %2)))
-                      (clojure.string/upper-case first)
-                      (clojure.string/upper-case second)))))
+                      (str/upper-case first)
+                      (str/upper-case second)))))
 
 ; Take Number of desired word lenght
 ; Return List of Words with x length from a sorted group by count @allwords atom.
@@ -52,7 +58,7 @@
 ; - filter-string has syntax "word likeness word likeness"
 ; - example "TEST 3 TEXT 2" usw
 ; need to be transformed into [[TEST 3][TEXT 2]]
-; (partition 2 (clojure.string/split @filter-string #"\s+"))
+; (partition 2 (str/split @filter-string #"\s+"))
 ; maybe move it in here?
 ; - note: incomplete filter-list possible, but tail gets ignored.
 ;         possible problem: likeness over 10, because the incomplete 1 is valid.
@@ -66,11 +72,6 @@
       (recur (filter #(= (get-likeness-between % w) l)
                      word-list) r))))
 
-; simple stip function
-; Takes input string and string with chars, which should be removed.
-; Return the input string without any chars from the second string.
-(defn strip [coll chars]
-  (apply str (remove #((set chars) %) coll)))
 
 ; This function is a good example of a bad Clojure flow.
 ; It depends on the atoms to work and has no input arguments.
@@ -81,7 +82,7 @@
 ; Return the filtered list
 ; (I'm impressed that it don't write it into the current-words atom..)
 (defn get-updated-list []
-  (let [input (partition 2 get-filter-string)
+  (let [input (partition 2 (get-filter-string))
         lenght (count (first (first input)))
         world-list (if @first-time
                      (get-worts-with-lenght-of lenght)
@@ -100,10 +101,10 @@
         (if @first-time
           (apply concat (vals @allwords))
           (get-worts-with-lenght-of @last-lenght))
-        words-left (filter #(clojure.string/starts-with? % @usertext) word-list)
-        all-words-left (filter #(clojure.string/starts-with? % @usertext)
-                               (clojure.set/difference (set all-word-list)
-                                                       (set get-filter-string)))
+        words-left (filter #(str/starts-with? % @usertext) word-list)
+        all-words-left (filter #(str/starts-with? % @usertext)
+                               (set/difference (set all-word-list)
+                                                       (set (get-filter-string))))
         count-words-left (count words-left)
         count-all-words-left (count all-words-left)]
     (do (write-text "usertext" @usertext)
@@ -113,7 +114,7 @@
                       (and (= count-words-left 0) (> count-all-words-left 0))
                       "NO CHANCE WITH THIS WORD. But you can go ahad to refine your list."
                       (= count-all-words-left 0)
-                      (do (swap! usertext #(clojure.string/join "" (drop-last %1)))
+                      (do (swap! usertext #(str/join "" (drop-last %1)))
                           (write-text "usertext" @usertext)
                           "NO VALID WORD.")
                       (<= count-words-left 100) words-left
@@ -126,7 +127,7 @@
   (let [word-list (if @first-time
                     (apply concat (vals @allwords))
                     @current-words)
-        words-left (filter #(clojure.string/starts-with? % @usertext) word-list)
+        words-left (filter #(str/starts-with? % @usertext) word-list)
         current-word @usertext
         distinct-map (distinct (map #(nth % (count current-word)) words-left))]
     (if (= 1 (count distinct-map))
@@ -188,7 +189,7 @@
     (let [kc (.-keyCode e)]
       (cond
         ; delete last char with tab
-        (= kc 8) (swap! usertext #(clojure.string/join "" (drop-last %1)))
+        (= kc 8) (swap! usertext #(str/join "" (drop-last %1)))
         ; autocompletion with tab
         (= kc 9) (do (.preventDefault e)
                      (auto-complete))
@@ -198,12 +199,12 @@
         (= kc 27) (reset-all)
         ; let user type words.
         ; TODO: fix a possible problem with other languages. äüößÅÆØиыэюя usw.
-        (and (>= kc 65) (<= kc 90)) (swap! usertext #(str %1 %2) (clojure.string/upper-case (.-key e))))
+        (and (>= kc 65) (<= kc 90)) (swap! usertext #(str %1 %2) (str/upper-case (.-key e))))
       (update-usertext))
     (let [kc (.-keyCode e)]
       (cond
         ; delete last char with tab
-        (= kc 8) (swap! usertext #(clojure.string/join "" (drop-last %1)))
+        (= kc 8) (swap! usertext #(str/join "" (drop-last %1)))
         ; try sending input with return
         (= kc 13) (send-input-number)
         ; esc to reset all
