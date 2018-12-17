@@ -132,9 +132,9 @@
         current-word @usertext
         distinct-map (distinct (map #(nth % (count current-word)) words-left))]
     (if (= 1 (count distinct-map))
-      (do (js/console.log (str (first distinct-map)))
-          (js/console.log words-left)
-          (js/console.log @usertext)
+      (do ; (js/console.log (str (first distinct-map)))
+          ; (js/console.log words-left)
+          ; (js/console.log @usertext)
           (swap! usertext #(str %1 %2) (first distinct-map))
           (write-text "usertext" @usertext)
           (if (not-any? #(= @usertext %) @current-words) (auto-complete))))))
@@ -150,7 +150,7 @@
         (swap! filter-string #(str %1 %2) @usertext)
         (reset! mode "number")
         (reset! usertext "")
-        (js/console.log @filter-string)
+        ; (js/console.log @filter-string)
         (write-text "infotext" "Enter the Likeness for the Word.")
         (write-text "current-list" @filter-string))
       (write-text "return-info" (str "No word match for " @usertext)))))
@@ -162,7 +162,7 @@
       (swap! filter-string #(str %1 " " %2 ", ") @usertext)
       (reset! mode "text")
       (reset! usertext "")
-      (js/console.log @filter-string)
+      ; (js/console.log @filter-string)
       (write-text "infotext" "Enter the Word you want to try.")
       (reset! current-words (get-updated-list))
       (write-text "list" (with-out-str (cpp/pprint (sort (group-by first @current-words)))))
@@ -221,7 +221,7 @@
       (write-text "usertext" @usertext))))
 
 ; listener on key-down events -> call parse-userkey
-(dommy/listen! js/document :keydown (fn [e] (do (js/console.log e)
+(dommy/listen! js/document :keydown (fn [e] (do ; (js/console.log e)
                                                 (write-text "return-info" "")
                                                 (parse-userkey e))))
 
