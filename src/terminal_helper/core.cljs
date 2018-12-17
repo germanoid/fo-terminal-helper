@@ -1,7 +1,8 @@
 (ns terminal-helper.core
   (:require [dommy.core :as dommy :refer-macros [sel1]]
             [clojure.set :as set]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [cljs.pprint :as cpp]))
 
 (enable-console-print!)
 
@@ -104,7 +105,7 @@
         words-left (filter #(str/starts-with? % @usertext) word-list)
         all-words-left (filter #(str/starts-with? % @usertext)
                                (set/difference (set all-word-list)
-                                                       (set (get-filter-string))))
+                                               (set (get-filter-string))))
         count-words-left (count words-left)
         count-all-words-left (count all-words-left)]
     (do (write-text "usertext" @usertext)
@@ -164,7 +165,7 @@
       (js/console.log @filter-string)
       (write-text "infotext" "Enter the Word you want to try.")
       (reset! current-words (get-updated-list))
-      (write-text "list" @current-words)
+      (write-text "list" (with-out-str (cpp/pprint (sort (group-by first @current-words)))))
       (reset! first-time false)
       (write-text "current-list" @filter-string))
     (write-text "return-info" "Likeness empty.")))
@@ -186,8 +187,11 @@
 ; function to parse user input.
 (defn parse-userkey [e]
   (if (= @mode "text")
-    (let [kc (.-keyCode e)]
+    (let [kc (.-keyCode e)
+          ctrl (.-ctrlKey e)]
       (cond
+        ; delete everything with ctrl backspace/c
+        (and ctrl (or (= kc 8) (= kc 67))) (reset! usertext "")
         ; delete last char with tab
         (= kc 8) (swap! usertext #(str/join "" (drop-last %1)))
         ; autocompletion with tab
@@ -201,8 +205,11 @@
         ; TODO: fix a possible problem with other languages. äüößÅÆØиыэюя usw.
         (and (>= kc 65) (<= kc 90)) (swap! usertext #(str %1 %2) (str/upper-case (.-key e))))
       (update-usertext))
-    (let [kc (.-keyCode e)]
+    (let [kc   (.-keyCode e)
+          ctrl (.-ctrlKey e)]
       (cond
+        ; delete everything with ctrl backspace/c
+        (and ctrl (or (= kc 8) (= kc 67))) (reset! usertext "")
         ; delete last char with tab
         (= kc 8) (swap! usertext #(str/join "" (drop-last %1)))
         ; try sending input with return
@@ -224,8 +231,7 @@
 
 (defonce app-state (atom {:text "Hello world!"}))
 
-(defn on-js-reload []
+(defn on-js-reload [])
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
-)
